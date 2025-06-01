@@ -1,123 +1,110 @@
 #include "terrain.h"
-#include <math.h>
+#include <stdio.h>
 #include "raymath.h"
+#include "rlgl.h"
+#include <GL/gl.h> 
+#define MAX_MESH_VERTEX_BUFFERS 7
 
-Mesh GenGridStripMeshWithNormals(int rows, int cols, float width, float height) {
-    int stripsPerRow = 2 * cols + 2;
-    int rawVertexCount = (rows - 1) * stripsPerRow - 2;
+Mesh GenPlaneStripMesh() {
 
-    // Allocate space
-    Vector3 *vertices = MemAlloc(rawVertexCount * sizeof(Vector3));
-    Vector3 *normals = MemAlloc(rawVertexCount * sizeof(Vector3));
-    Vector2 *texcoords = MemAlloc(rawVertexCount * sizeof(Vector2));
+    // 5 x 5 grid → 4 strips of 5*2 = 10 verts each, plus degenerate verts between rows
+    // Total = 4*(10) + 3*(2) = 52 vertices
 
-    // Store all positions for reference
-    Vector3 **grid = MemAlloc(rows * sizeof(Vector3 *));
-    for (int i = 0; i < rows; i++) {
-        grid[i] = MemAlloc(cols * sizeof(Vector3));
+    Vector3 vertices[] = {
+        // First row
+        { -2, 0, -2 }, { -2, 0, -1 },
+        { -1, 0, -2 }, { -1, 0, -1 },
+        {  0, 0, -2 }, {  0, 0, -1 },
+        {  1, 0, -2 }, {  1, 0, -1 },
+        {  2, 0, -2 }, {  2, 0, -1 },
+
+        // Degenerate
+        {  2, 0, -1 }, { -2, 0, -1 },
+
+        // Second row
+        { -2, 0, -1 }, { -2, 0,  0 },
+        { -1, 0, -1 }, { -1, 0,  0 },
+        {  0, 0, -1 }, {  0, 0,  0 },
+        {  1, 0, -1 }, {  1, 0,  0 },
+        {  2, 0, -1 }, {  2, 0,  0 },
+
+        // Degenerate
+        {  2, 0,  0 }, { -2, 0,  0 },
+
+        // Third row
+        { -2, 0,  0 }, { -2, 0,  1 },
+        { -1, 0,  0 }, { -1, 0,  1 },
+        {  0, 0,  0 }, {  0, 0,  1 },
+        {  1, 0,  0 }, {  1, 0,  1 },
+        {  2, 0,  0 }, {  2, 0,  1 },
+
+        // Degenerate
+        {  2, 0,  1 }, { -2, 0,  1 },
+
+        // Fourth row
+        { -2, 0,  1 }, { -2, 0,  2 },
+        { -1, 0,  1 }, { -1, 0,  2 },
+        {  0, 0,  1 }, {  0, 0,  2 },
+        {  1, 0,  1 }, {  1, 0,  2 },
+        {  2, 0,  1 }, {  2, 0,  2 },
+    };
+
+    int vertexCount = sizeof(vertices) / sizeof(vertices[0]);
+
+    Vector3 normals[52];
+    Vector2 texcoords[52];
+    for (int i = 0; i < vertexCount; i++) {
+        normals[i] = (Vector3){ 0, 1, 0 };
+        texcoords[i] = (Vector2){ 0, 0 }; // Flat for now
     }
-
-    float dx = width / (cols - 1);
-    float dy = height / (rows - 1);
-
-    // First create the vertex grid (positions only)
-    for (int y = 0; y < rows; y++) {
-        for (int x = 0; x < cols; x++) {
-            float px = x * dx - width / 2;
-            float py = 0;
-            float pz = y * dy - height / 2;
-            grid[y][x] = (Vector3){ px, py, pz };
-        }
-    }
-
-    // Compute per-vertex normals by averaging triangle face normals
-    Vector3 **normalGrid = MemAlloc(rows * sizeof(Vector3 *));
-    for (int i = 0; i < rows; i++) {
-        normalGrid[i] = MemAlloc(cols * sizeof(Vector3));
-        for (int j = 0; j < cols; j++) normalGrid[i][j] = (Vector3){ 0 };
-    }
-
-    // Accumulate normals from triangles
-    for (int y = 0; y < rows - 1; y++) {
-        for (int x = 0; x < cols - 1; x++) {
-            Vector3 p00 = grid[y][x];
-            Vector3 p10 = grid[y][x + 1];
-            Vector3 p01 = grid[y + 1][x];
-            Vector3 p11 = grid[y + 1][x + 1];
-
-            // Triangle 1: p00, p10, p11
-            Vector3 edge1 = Vector3Subtract(p10, p00);
-            Vector3 edge2 = Vector3Subtract(p11, p00);
-            Vector3 n1 = Vector3Normalize(Vector3CrossProduct(edge1, edge2));
-
-            // Triangle 2: p00, p11, p01
-            edge1 = Vector3Subtract(p11, p00);
-            edge2 = Vector3Subtract(p01, p00);
-            Vector3 n2 = Vector3Normalize(Vector3CrossProduct(edge1, edge2));
-
-            // Accumulate
-            normalGrid[y][x] = Vector3Add(normalGrid[y][x], n1);
-            normalGrid[y][x + 1] = Vector3Add(normalGrid[y][x + 1], n1);
-            normalGrid[y + 1][x + 1] = Vector3Add(normalGrid[y + 1][x + 1], n1);
-
-            normalGrid[y][x] = Vector3Add(normalGrid[y][x], n2);
-            normalGrid[y + 1][x + 1] = Vector3Add(normalGrid[y + 1][x + 1], n2);
-            normalGrid[y + 1][x] = Vector3Add(normalGrid[y + 1][x], n2);
-        }
-    }
-
-    // Build strip vertex data
-    int index = 0;
-    for (int y = 0; y < rows - 1; y++) {
-        for (int x = 0; x <= cols; x++) {
-            // Lower row vertex
-            Vector3 p0 = grid[y][x];
-            Vector3 n0 = Vector3Normalize(normalGrid[y][x]);
-            Vector2 t0 = (Vector2){ (float)x / (cols - 1), (float)y / (rows - 1) };
-
-            vertices[index] = p0;
-            normals[index] = n0;
-            texcoords[index++] = t0;
-
-            // Upper row vertex
-            Vector3 p1 = grid[y + 1][x];
-            Vector3 n1 = Vector3Normalize(normalGrid[y + 1][x]);
-            Vector2 t1 = (Vector2){ (float)x / (cols - 1), (float)(y + 1) / (rows - 1) };
-
-            vertices[index] = p1;
-            normals[index] = n1;
-            texcoords[index++] = t1;
-        }
-
-        // Add degenerate triangle to bridge rows
-        if (y < rows - 2) {
-            vertices[index] = vertices[index - 1];
-            normals[index] = normals[index - 1];
-            texcoords[index] = texcoords[index - 1];
-            index++;
-
-            vertices[index] = grid[y + 1][0];
-            normals[index] = Vector3Normalize(normalGrid[y + 1][0]);
-            texcoords[index++] = (Vector2){ 0, (float)(y + 1) / (rows - 1) };
-        }
-    }
-
-    // Cleanup grid memory
-    for (int i = 0; i < rows; i++) {
-        MemFree(grid[i]);
-        MemFree(normalGrid[i]);
-    }
-    MemFree(grid);
-    MemFree(normalGrid);
 
     Mesh mesh = { 0 };
-    mesh.vertexCount = index;
-    mesh.triangleCount = index - 2;
+    mesh.vertexCount = vertexCount;
+    mesh.triangleCount = vertexCount - 2;
 
     mesh.vertices = (float *)vertices;
     mesh.normals = (float *)normals;
     mesh.texcoords = (float *)texcoords;
-
+    mesh.vboId = (unsigned int *)MemAlloc(sizeof(unsigned int) * MAX_MESH_VERTEX_BUFFERS);
     UploadMesh(&mesh, false);
+
     return mesh;
+}
+
+void DrawTriangleStripGrid(int rows, int cols, float spacing, Color color) {
+    static bool printed = false;
+    rlColor3f(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f);
+
+    for (int z = 0; z < rows - 1; z++) {
+        if(!printed) {
+            printf("Drawing row %d of %d\n", z, rows - 1);
+        }
+        rlBegin(GL_TRIANGLE_STRIP);
+
+        bool leftToRight = (z % 2 == 0);
+
+        for (int i = 0; i < cols; i++) {
+            if(!printed) {
+                printf("Drawing column %d of %d\n", i, cols);
+            }
+            int x = leftToRight ? i : (cols - 1 - i);
+
+            float xPos = (x - (cols - 1) / 2.0f) * spacing;
+            float z0   = (z - (rows - 1) / 2.0f) * spacing;
+            float z1   = ((z + 1) - (rows - 1) / 2.0f) * spacing;
+
+            rlVertex3f(xPos, 0.0f, z0); // bottom
+            rlVertex3f(xPos, 0.0f, z1); // top
+
+            if (!printed) {
+                printf("bottom: (%f, %f, %f)\n", xPos, 0.0f, z0);
+                printf("top: (%f, %f, %f)\n", xPos, 0.0f, z1);
+            }
+        }
+        rlEnd();
+    }
+        if(!printed) {
+            printf("DrawTriangleStripGrid: %d rows, %d cols, spacing %f\n", rows, cols, spacing);
+            printed = true;
+        }
 }

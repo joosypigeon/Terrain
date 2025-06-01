@@ -3,6 +3,12 @@
 
 #include "raylib.h"
 
-Mesh GenGridStripMeshWithNormals(int rows, int cols, float width, float height);
+
+
+#define GRID_SIZE 5
+
+
+Mesh GenPlaneStripMesh();
+void DrawTriangleStripGrid(int rows, int cols, float cellSize, Color color);
 
 #endif // TERRAIN_H
