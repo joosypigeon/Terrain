@@ -10,7 +10,7 @@ extern int SCREEN_HEIGHT;
 
 void SetTorusDimensions(float major, float minor);
 Mesh MyGenTorusMesh(int rings, int sides);
-
+Mesh MyGenFlatTorusMesh(int rings, int sides);
 
 Vector3 get_torus_position(float u, float v);
 Vector3 get_torus_normal(float u, float v);

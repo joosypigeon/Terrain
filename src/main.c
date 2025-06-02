@@ -95,8 +95,8 @@ size_t frameCounter = 0;
     Model torus_model = LoadModelFromMesh(torus_mesh);
     torus_model.materials[0].shader = shader;  // <== Required for lighting to take effect
 
-    Mesh plane = GenMeshPlane(1000.0f, 1000.0f, 100, 100);
-    //Mesh plane = GenPlaneStripMesh();
+    Mesh plane = MyGenFlatTorusMesh(TORUS_MAJOR_SEGMENTS, TORUS_MINOR_SEGMENTS);
+    GenMeshTangents(&plane);
     Model terrain = LoadModelFromMesh(plane);
     terrain.materials[0].shader = shader;
 
@@ -137,17 +137,13 @@ size_t frameCounter = 0;
                 
                 BeginShaderMode(shader);
                     DrawModel(torus_model, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, WHITE);
-                    //DrawModel(terrain, (Vector3){ 0.0f, -50.0f, 0.0f }, 1.0f, WHITE);
-                    //DrawTriangleStripGrid(GRID_SIZE, GRID_SIZE, CELL_SIZE, GREEN);
-
-                    rlEnableWireMode();   // Show triangles as outlines
-                    DrawTriangleStripGrid(GRID_SIZE, GRID_SIZE, CELL_SIZE, GREEN);
-                    rlDisableWireMode();
+                    DrawModel(terrain, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, WHITE);
+                    
 
                     if(showWireframe)
                     {
                         DrawModelWires(torus_model, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, DARKGRAY);
-                        //DrawModelWires(terrain, (Vector3){ 0.0f, -50.0f, 0.0f }, 1.0f, DARKGRAY);
+                        DrawModelWires(terrain, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, DARKGRAY);
                     }
                 EndShaderMode();
 
