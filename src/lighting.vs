@@ -11,6 +11,11 @@ uniform mat4 mvp;
 uniform mat4 matModel;
 uniform mat4 matNormal;
 
+uniform float time;
+uniform float waveAmplitude;
+uniform float waveFrequency;
+uniform int objectID;
+
 // Output vertex attributes (to fragment shader)
 out vec3 fragPosition;
 out vec2 fragTexCoord;
@@ -21,12 +26,17 @@ out vec3 fragNormal;
 
 void main()
 {
+    vec3 pos = vertexPosition;
     // Send vertex attributes to fragment shader
-    fragPosition = vec3(matModel*vec4(vertexPosition, 1.0));
+    if( objectID == 0 ) {
+        // my flat torus
+        pos.y += waveAmplitude * sin(vertexPosition.x + vertexPosition.z + time);
+    }
+    fragPosition = vec3(matModel*vec4(pos, 1.0));
     fragTexCoord = vertexTexCoord;
     fragColor = vertexColor;
     fragNormal = normalize(vec3(matNormal*vec4(vertexNormal, 1.0)));
 
     // Calculate final vertex position
-    gl_Position = mvp*vec4(vertexPosition, 1.0);
+    gl_Position = mvp*vec4(pos, 1.0);
 }

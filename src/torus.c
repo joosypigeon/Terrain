@@ -104,7 +104,7 @@ Mesh MyGenFlatTorusMesh(int rings, int sides) {
                 //float cosTheta = cosf(theta), sinTheta = sinf(theta);
                 //float cosPhi   = cosf(phi),   sinPhi   = sinf(phi);
 
-                float x = R + r + phi * r;
+                float x = R + r - phi * r;
                 float y = 0.0f; // Flat torus, so y is always 0
                 float z = (R + r) * theta;
 
