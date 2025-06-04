@@ -64,3 +64,18 @@ float perlin_noise2d(float x, float y)
     return lerp(v, x1, x2);
 }
 
+float fractal_noise2d(float x, float y, int octaves, float persistence) {
+    float total = 0.0f;
+    float frequency = 1.0f;
+    float amplitude = 1.0f;
+    float maxValue = 0.0f;
+
+    for (int i = 0; i < octaves; i++) {
+        total += perlin_noise2d(x * frequency, y * frequency) * amplitude;
+        maxValue += amplitude;
+        amplitude *= persistence;
+        frequency *= 2.0f;
+    }
+
+    return (total / maxValue + 1.0f) / 2.0f;  // Normalise to [0, 1]
+}

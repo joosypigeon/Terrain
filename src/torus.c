@@ -1,4 +1,9 @@
 #include "torus.h"
+#include "perlin_noise.h"
+
+#include <stdlib.h>
+
+#include <stdio.h>
 
 typedef struct TorusCoords {
     float theta, phi;
@@ -101,12 +106,9 @@ Mesh MyGenFlatTorusMesh(int rings, int sides) {
                 float theta = (k < 2) ? theta1 : theta2;
                 float phi   = (k % 2 == 0) ? phi1 : phi2;
 
-                //float cosTheta = cosf(theta), sinTheta = sinf(theta);
-                //float cosPhi   = cosf(phi),   sinPhi   = sinf(phi);
-
-                float x = R + r - phi * r;
+                float x = SCREEN_HEIGHT - phi * r;
                 float y = 0.0f; // Flat torus, so y is always 0
-                float z = (R + r) * theta;
+                float z = R * theta;
 
                 float nx = 0.0f; // Flat torus normal in y direction
                 float ny = 1.0f; // Flat torus normal in y direction
@@ -127,6 +129,45 @@ Mesh MyGenFlatTorusMesh(int rings, int sides) {
             vertices[index] = p[3]; normals[index] = n[3]; texcoords[index++] = t[3];
         }
     }
+    float **heightmap = malloc(SCREEN_HEIGHT * sizeof(float *));
+    for (int i = 0; i < SCREEN_HEIGHT; i++) {
+        heightmap[i] = malloc(SCREEN_WIDTH * sizeof(float));
+    }
+
+    perlin_init(42);  // consistent seed
+
+    float scale = 0.05f;
+
+    for (int y = 0; y < SCREEN_HEIGHT; y++) {
+        for (int x = 0; x < SCREEN_WIDTH; x++) {
+            float nx = x * scale;
+            float ny = y * scale;
+            heightmap[y][x] = fractal_noise2d(nx, ny, 6, 0.5f);  // 6 octaves
+        }
+    }
+
+
+
+
+    for (int i = 0; i < vertexCount; i++) {
+        int sx = (int)(vertices[i].z);
+        int sy = (int)(SCREEN_HEIGHT - vertices[i].x);  
+
+        // Clamp to bounds (if needed)
+        if (sx >= 0 && sx < SCREEN_WIDTH && sy >= 0 && sy < SCREEN_HEIGHT) {
+            vertices[i].y = heightmap[sy][sx] * 1000.0f;  // scale height as needed
+        }
+    }
+
+
+
+
+    for (int i = 0; i < SCREEN_HEIGHT; i++) {
+        free(heightmap[i]);
+    }
+    free(heightmap);
+
+
 
     Mesh mesh = { 0 };
     mesh.vertexCount = vertexCount;

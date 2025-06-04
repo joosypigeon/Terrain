@@ -71,9 +71,9 @@ size_t frameCounter = 0;
     Shader shader = LoadShader("src/lighting.vs","src/lighting.fs");
     // Get some required shader locations
 
-    int locTime     = GetShaderLocation(shader, "time");
-    int locAmp      = GetShaderLocation(shader, "waveAmplitude");
-    int locFreq     = GetShaderLocation(shader, "waveFrequency");
+    //int locTime     = GetShaderLocation(shader, "time");
+    //int locAmp      = GetShaderLocation(shader, "waveAmplitude");
+    //int locFreq     = GetShaderLocation(shader, "waveFrequency");
     int locID       = GetShaderLocation(shader, "objectID");
 
 
@@ -103,15 +103,15 @@ size_t frameCounter = 0;
     Model torus_model = LoadModelFromMesh(torus_mesh);
     torus_model.materials[0].shader = shader;  // <== Required for lighting to take effect
 
-    Mesh plane = MyGenFlatTorusMesh(TORUS_MAJOR_SEGMENTS, TORUS_MINOR_SEGMENTS);
-    GenMeshTangents(&plane);
-    Model terrain = LoadModelFromMesh(plane);
+    Mesh terrain_mesh = MyGenFlatTorusMesh(TORUS_MAJOR_SEGMENTS, TORUS_MINOR_SEGMENTS);
+    GenMeshTangents(&terrain_mesh);
+    Model terrain = LoadModelFromMesh(terrain_mesh);
     terrain.materials[0].shader = shader;
 
     //int number_of_frame = 0;
     while (!WindowShouldClose())
     {
-        float time = GetTime();
+        //float time = GetTime();
         frameCounter++;
 
         // Update camera
@@ -148,12 +148,12 @@ size_t frameCounter = 0;
                     SetShaderValue(shader, locID, &id, SHADER_UNIFORM_INT);
                     DrawModel(torus_model, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, WHITE);
                     // Object 0: slow low wave
-                    float amp0 = 50.0f, freq0 = 10.0f; 
-                    id = 0;
-                    SetShaderValue(shader, locTime, &time, SHADER_UNIFORM_FLOAT);
-                    SetShaderValue(shader, locAmp, &amp0, SHADER_UNIFORM_FLOAT);
-                    SetShaderValue(shader, locFreq, &freq0, SHADER_UNIFORM_FLOAT);
-                    SetShaderValue(shader, locID, &id, SHADER_UNIFORM_INT);
+                    // float amp0 = 50.0f, freq0 = 10.0f; 
+                    id = 2;
+                    //SetShaderValue(shader, locTime, &time, SHADER_UNIFORM_FLOAT);
+                    //SetShaderValue(shader, locAmp, &amp0, SHADER_UNIFORM_FLOAT);
+                    //SetShaderValue(shader, locFreq, &freq0, SHADER_UNIFORM_FLOAT);
+                    //SetShaderValue(shader, locID, &id, SHADER_UNIFORM_INT);
                     DrawModel(terrain, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, WHITE);
                     
 
@@ -162,7 +162,7 @@ size_t frameCounter = 0;
                         id = 1;
                         SetShaderValue(shader, locID, &id, SHADER_UNIFORM_INT);
                         DrawModelWires(torus_model, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, DARKGRAY);
-                        id = 0;
+                        id = 2;
                         SetShaderValue(shader, locID, &id, SHADER_UNIFORM_INT);
                         DrawModelWires(terrain, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, DARKGRAY);
                     }
