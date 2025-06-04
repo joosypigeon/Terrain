@@ -136,7 +136,6 @@ size_t frameCounter = 0;
 
             BeginMode3D(camera);
 
-                rlSetMatrixProjection(MatrixPerspective(45.0f * DEG2RAD, (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.1f, 10000.0f));
                 rlSetMatrixProjection(MatrixPerspective(
                     DEG2RAD * camera.fovy,
                     (float)SCREEN_WIDTH / SCREEN_HEIGHT,
