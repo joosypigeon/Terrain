@@ -5,6 +5,8 @@
 
 #include <stdio.h>
 
+#include <assert.h>
+
 typedef struct TorusCoords {
     float theta, phi;
     float cosTheta, sinTheta;
@@ -129,25 +131,50 @@ Mesh MyGenFlatTorusMesh(int rings, int sides) {
             vertices[index] = p[3]; normals[index] = n[3]; texcoords[index++] = t[3];
         }
     }
+
     float **heightmap = malloc(SCREEN_HEIGHT * sizeof(float *));
     for (int i = 0; i < SCREEN_HEIGHT; i++) {
         heightmap[i] = malloc(SCREEN_WIDTH * sizeof(float));
     }
 
+    unsigned char image[SCREEN_HEIGHT][SCREEN_WIDTH];
+
     perlin_init(42);  // consistent seed
 
     float scale = 0.05f;
 
+
+    float min = 2.0f;
+    float max = -1.0f;
     for (int y = 0; y < SCREEN_HEIGHT; y++) {
         for (int x = 0; x < SCREEN_WIDTH; x++) {
             float nx = x * scale;
             float ny = y * scale;
-            heightmap[y][x] = fractal_noise2d(nx, ny, 6, 0.5f);  // 6 octaves
+            float noise = fractal_noise2d(nx, ny, 16, 0.5f);  // 6 octaves
+            if (noise < min) min = noise;
+            if (noise > max) max = noise;
+            heightmap[y][x] = noise;
+            image[y][x] = (unsigned char)(noise * 255.0f);
         }
     }
+    printf("Heightmap min: %f, max: %f\n", min, max);
 
+    FILE *f = fopen("heightmap.pgm", "wb");
+    if (!f) {
+        perror("Cannot write image");
+        exit(1);
+    }
 
+    fprintf(f, "P5\n%d %d\n255\n", SCREEN_WIDTH, SCREEN_HEIGHT);  // P5 = binary greyscale
+    fwrite(image, 1, SCREEN_WIDTH * SCREEN_HEIGHT, f);
+    fclose(f);
 
+    printf("Heightmap written to heightmap.pgm\n");
+
+    float upper_bound = 200.0f;
+    float lower_bound = 0.0f;
+    float gradient = (upper_bound - lower_bound) / (max - min);
+    printf("Gradient: %f\n", gradient);
 
     for (int i = 0; i < vertexCount; i++) {
         int sx = (int)(vertices[i].z);
@@ -155,7 +182,14 @@ Mesh MyGenFlatTorusMesh(int rings, int sides) {
 
         // Clamp to bounds (if needed)
         if (sx >= 0 && sx < SCREEN_WIDTH && sy >= 0 && sy < SCREEN_HEIGHT) {
-            vertices[i].y = heightmap[sy][sx] * 1000.0f;  // scale height as needed
+            float height = heightmap[sy][sx];
+            assert(height >= min && height <= max);  // Ensure height is within bound
+            // Apply the gradient to the height
+            float adjusted_height = lower_bound + (height - min) * gradient;
+            vertices[i].y = adjusted_height;  // Adjust the y-coordinate based on the noise
+        } else {
+            // If out of bounds, set to a default value or skip
+            vertices[i].y = 0.0f;  // Default value if out of bounds
         }
     }
 
