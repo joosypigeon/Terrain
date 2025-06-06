@@ -85,6 +85,8 @@ Mesh MyGenTorusMesh(int rings, int sides) {
     return mesh; 
 }
 
+#define WRAP_MOD(a, m) (((a) % (m) + (m)) % (m))
+
 Mesh MyGenFlatTorusMesh(int rings, int sides) {
     int vertexCount = rings * sides * 6;
     Vector3 *vertices = (Vector3 *)MemAlloc(vertexCount * sizeof(Vector3));
@@ -180,28 +182,23 @@ Mesh MyGenFlatTorusMesh(int rings, int sides) {
         int sx = (int)(vertices[i].z);
         int sy = (int)(SCREEN_HEIGHT - vertices[i].x);  
 
-        // Clamp to bounds (if needed)
-        if (sx >= 0 && sx < SCREEN_WIDTH && sy >= 0 && sy < SCREEN_HEIGHT) {
-            float height = heightmap[sy][sx];
-            assert(height >= min && height <= max);  // Ensure height is within bound
-            // Apply the gradient to the height
-            float adjusted_height = lower_bound + (height - min) * gradient;
-            vertices[i].y = adjusted_height;  // Adjust the y-coordinate based on the noise
-        } else {
-            // If out of bounds, set to a default value or skip
-            vertices[i].y = 0.0f;  // Default value if out of bounds
-        }
+        // Wrap around the coordinates to ensure they are within bounds
+        sx = WRAP_MOD(sx, SCREEN_WIDTH);
+        sy = WRAP_MOD(sy, SCREEN_HEIGHT);
+        // Ensure the coordinates are within bounds
+        assert(sx >= 0 && sx < SCREEN_WIDTH);
+        assert(sy >= 0 && sy < SCREEN_HEIGHT);
+        float height = heightmap[sy][sx];
+        assert(height >= min && height <= max);  // Ensure height is within bound
+        // Apply the gradient to the height
+        float adjusted_height = lower_bound + (height - min) * gradient;
+        vertices[i].y = adjusted_height;  // Adjust the y-coordinate based on the noise
     }
-
-
-
 
     for (int i = 0; i < SCREEN_HEIGHT; i++) {
         free(heightmap[i]);
     }
     free(heightmap);
-
-
 
     Mesh mesh = { 0 };
     mesh.vertexCount = vertexCount;
