@@ -25,8 +25,8 @@
 #include "torus.h"
 #include "terrain.h"
 
-#define TORUS_MAJOR_SEGMENTS 128
-#define TORUS_MINOR_SEGMENTS 64
+#define TORUS_MAJOR_SEGMENTS 256
+#define TORUS_MINOR_SEGMENTS 128
 
 
 int SCREEN_WIDTH;
@@ -119,6 +119,7 @@ size_t frameCounter = 0;
         
         // Update light values (actually, only enable/disable them)
         for (int i = 0; i < MAX_LIGHTS; i++) UpdateLightValues(shader, lights[i]);
+        Vector3 translation = { 2.0f * R, 0.0f, 0.0f };  // Move model to this position
         BeginDrawing();
             ClearBackground(RAYWHITE);
 
@@ -133,7 +134,13 @@ size_t frameCounter = 0;
                 
                 BeginShaderMode(shader);
                     DrawModel(torus_model, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, WHITE);
-                    DrawModel(terrain, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, WHITE);
+                    //DrawModel(terrain, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, WHITE);
+                    DrawModelEx(terrain,
+                        translation,               // Translation
+                        (Vector3){ 0, 1, 0 },      // Rotation axis (no effect if angle is 0)
+                        0.0f,                      // No rotation
+                        (Vector3){ 1, 1, 1 },      // Uniform scale (no scaling)
+                        WHITE);                    // Tint color
 
                     if(showWireframe)
                     {

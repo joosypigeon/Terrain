@@ -5,6 +5,8 @@
 
 #include <stdio.h>
 
+#include <float.h>
+
 #include <assert.h>
 
 typedef struct TorusCoords {
@@ -108,20 +110,22 @@ Mesh MyGenFlatTorusMesh(int rings, int sides) {
 
     perlin_init(42);  // consistent seed
 
-    float scale = 0.05f;
+    float scale = 0.0005f;
 
-
-    float min = 2.0f;
-    float max = -1.0f;
+    float min = FLT_MIN;
+    float max = -FLT_MAX;
     for (int y = 0; y < SCREEN_HEIGHT; y++) {
         for (int x = 0; x < SCREEN_WIDTH; x++) {
             float nx = x * scale;
             float ny = y * scale;
-            float noise = fractal_noise2d(nx, ny, 16, 0.5f);  // 6 octaves
-            if (noise < min) min = noise;
-            if (noise > max) max = noise;
-            heightmap[y][x] = noise;
-            image[y][x] = (unsigned char)(noise * 255.0f);
+            float dx = fractal_noise2d(nx + 100.0f, ny + 100.0f, 4, 0.5f);
+            float dy = fractal_noise2d(nx - 100.0f, ny - 100.0f, 4, 0.5f);
+            float warped_noise = fractal_noise2d(nx + dx * 4.0f, ny + dy * 4.0f, 6, 0.5f);
+            warped_noise = powf(warped_noise, 1.5f);  // boost height contrast
+            if (warped_noise < min) min = warped_noise;
+            if (warped_noise > max) max = warped_noise;
+            heightmap[y][x] = warped_noise;
+            image[y][x] = (unsigned char)(warped_noise * 255.0f);
         }
     }
     printf("Heightmap min: %f, max: %f\n", min, max);
@@ -138,7 +142,7 @@ Mesh MyGenFlatTorusMesh(int rings, int sides) {
 
     printf("Heightmap written to heightmap.pgm\n");
 
-    float upper_bound = 50.0f;
+    float upper_bound = 200.0f;
     float lower_bound = 0.0f;
     float gradient = (upper_bound - lower_bound) / (max - min);
     printf("Gradient: %f\n", gradient);
