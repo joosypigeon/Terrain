@@ -34,6 +34,9 @@ int SCREEN_HEIGHT;
 float HALF_SCREEN_WIDTH;
 float HALF_SCREEN_HEIGHT;
 
+Matrix MatrixTranslateVector(Vector3 v) {
+    return MatrixTranslate(v.x, v.y, v.z);
+}
 
 int main(void)
 {
@@ -97,6 +100,7 @@ size_t frameCounter = 0;
     GenMeshTangents(&terrain_mesh);
     Model terrain = LoadModelFromMesh(terrain_mesh);
     terrain.materials[0].shader = shader;
+    Vector3 translation = { 2.0f * R, 0.0f, 0.0f };  // Move model to this position
 
     //int number_of_frame = 0;
     while (!WindowShouldClose())
@@ -119,7 +123,7 @@ size_t frameCounter = 0;
         
         // Update light values (actually, only enable/disable them)
         for (int i = 0; i < MAX_LIGHTS; i++) UpdateLightValues(shader, lights[i]);
-        Vector3 translation = { 2.0f * R, 0.0f, 0.0f };  // Move model to this position
+        
         BeginDrawing();
             ClearBackground(RAYWHITE);
 
@@ -145,7 +149,14 @@ size_t frameCounter = 0;
                     if(showWireframe)
                     {
                         DrawModelWires(torus_model, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, DARKGRAY);
-                        DrawModelWires(terrain, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, DARKGRAY);
+                        //DrawModelWires(terrain, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, DARKGRAY);
+                        rlPushMatrix();
+                            Matrix transform = MatrixTranslateVector(translation);
+                            rlMultMatrixf(MatrixToFloat(transform));
+                            rlEnableWireMode();
+                            DrawModel(terrain, (Vector3){0, 0, 0}, 1.0f, DARKGRAY);  // Draw at origin because transform is handled manually
+                        rlDisableWireMode();
+                        rlPopMatrix();
                     }
                 EndShaderMode();
 
