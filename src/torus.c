@@ -110,22 +110,25 @@ Mesh MyGenFlatTorusMesh(int rings, int sides) {
 
     perlin_init(42);  // consistent seed
 
-    float scale = 0.0005f;
+    float scale = 0.005f;
 
     float min = FLT_MIN;
     float max = -FLT_MAX;
-    for (int y = 0; y < SCREEN_HEIGHT; y++) {
-        for (int x = 0; x < SCREEN_WIDTH; x++) {
-            float nx = x * scale;
-            float ny = y * scale;
-            float dx = fractal_noise2d(nx + 100.0f, ny + 100.0f, 4, 0.5f);
-            float dy = fractal_noise2d(nx - 100.0f, ny - 100.0f, 4, 0.5f);
-            float warped_noise = fractal_noise2d(nx + dx * 4.0f, ny + dy * 4.0f, 6, 0.5f);
+    for (int v = 0; v < SCREEN_HEIGHT; v++) {
+        for (int u = 0; u < SCREEN_WIDTH; u++) {
+            Vector3 position = get_torus_position(u, v);
+            float nx = position.x * scale;
+            float ny = position.y * scale;
+            float nz = position.z * scale;
+            float dx = fractal_noise3d(nx - 100.0f, ny - 100.0f, nz - 100.0f, 6, 0.5f);
+            float dy = fractal_noise3d(nx + 100.0f, ny + 100.0f, nz + 100.0f, 6, 0.5f);
+            float dz = fractal_noise3d(nx - 100.0f, ny - 100.0f, nz + 100.0f, 6, 0.5f);
+            float warped_noise = fractal_noise3d(nx + dx, ny + dy, nz + dz, 6, 0.5f);
             warped_noise = powf(warped_noise, 1.5f);  // boost height contrast
             if (warped_noise < min) min = warped_noise;
             if (warped_noise > max) max = warped_noise;
-            heightmap[y][x] = warped_noise;
-            image[y][x] = (unsigned char)(warped_noise * 255.0f);
+            heightmap[v][u] = warped_noise;
+            image[v][u] = (unsigned char)(warped_noise * 255.0f);
         }
     }
     printf("Heightmap min: %f, max: %f\n", min, max);
