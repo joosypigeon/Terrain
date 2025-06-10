@@ -104,7 +104,11 @@ Mesh MyGenTorusMesh(int rings, int sides) {
         heightmap[i] = malloc(SCREEN_WIDTH * sizeof(float));
     }
 
-    unsigned char image[SCREEN_HEIGHT][SCREEN_WIDTH];
+    //unsigned char image[SCREEN_HEIGHT][SCREEN_WIDTH];
+    unsigned char **image = malloc(SCREEN_HEIGHT * sizeof(unsigned char *));
+    for (int i = 0; i < SCREEN_HEIGHT; i++) {
+        image[i] = malloc(SCREEN_WIDTH * sizeof(unsigned char));
+    }
 
     perlin_init(42);  // consistent seed
 
@@ -143,6 +147,13 @@ Mesh MyGenTorusMesh(int rings, int sides) {
     fclose(f);
 
     printf("Heightmap written to heightmap_T.pgm\n");
+
+    // Free the image memory
+    for (int i = 0; i < SCREEN_HEIGHT; i++) {
+        free(image[i]);
+    }
+    free(image);
+
 
     float upper_bound = 100.0f;
     float lower_bound = 0.0f;
@@ -457,7 +468,11 @@ Mesh MyGenFlatTorusMesh(int rings, int sides) {
         heightmap[i] = malloc(SCREEN_WIDTH * sizeof(float));
     }
 
-    unsigned char image[SCREEN_HEIGHT][SCREEN_WIDTH];
+    //unsigned char image[SCREEN_HEIGHT][SCREEN_WIDTH];
+    unsigned char **image = malloc(SCREEN_HEIGHT * sizeof(unsigned char *));
+    for (int i = 0; i < SCREEN_HEIGHT; i++) {
+        image[i] = malloc(SCREEN_WIDTH * sizeof(unsigned char));
+    }
 
     perlin_init(42);  // consistent seed
 
@@ -497,7 +512,13 @@ Mesh MyGenFlatTorusMesh(int rings, int sides) {
 
     printf("Heightmap written to heightmap.pgm\n");
 
-    float upper_bound = 200.0f;
+    // Free the image memory
+    for (int i = 0; i < SCREEN_HEIGHT; i++) {
+        free(image[i]);
+    }
+    free(image);
+
+    float upper_bound = 400.0f;
     float lower_bound = 0.0f;
     float gradient = (upper_bound - lower_bound) / (max - min);
     printf("Gradient: %f\n", gradient);
