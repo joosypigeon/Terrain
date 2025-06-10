@@ -24,9 +24,9 @@ void SetTorusDimensions(float major, float minor) {
     R = major;
     r = minor;
 }
-
+#define WRAP_MOD(a, m) (((a) % (m) + (m)) % (m))
 // Generates a torus mesh with the specified number of rings and sides.
-Mesh MyGenTorusMesh(int rings, int sides) {
+Mesh MyGenTorusMeshBAK(int rings, int sides) {
     int vertexCount = rings * sides;
     int indexCount = rings * sides * 6;  // 2 triangles per quad, 3 indices each
 
@@ -97,8 +97,190 @@ Mesh MyGenTorusMesh(int rings, int sides) {
     UploadMesh(&mesh, false);
     return mesh;
 }
+// Generates a torus mesh with the specified number of rings and sides.
+Mesh MyGenTorusMesh(int rings, int sides) {
+    float **heightmap = malloc(SCREEN_HEIGHT * sizeof(float *));
+    for (int i = 0; i < SCREEN_HEIGHT; i++) {
+        heightmap[i] = malloc(SCREEN_WIDTH * sizeof(float));
+    }
 
-#define WRAP_MOD(a, m) (((a) % (m) + (m)) % (m))
+    unsigned char image[SCREEN_HEIGHT][SCREEN_WIDTH];
+
+    perlin_init(42);  // consistent seed
+
+    float scale = 0.005f;
+
+    float min = FLT_MIN;
+    float max = -FLT_MAX;
+    for (int v = 0; v < SCREEN_HEIGHT; v++) {
+        for (int u = 0; u < SCREEN_WIDTH; u++) {
+            float nx = R * cos(u * 2.0f * PI / SCREEN_WIDTH) * scale;
+            float ny = R * sin(u * 2.0f * PI / SCREEN_WIDTH) * scale;
+            float nz = r * cos(v * 2.0f * PI / SCREEN_HEIGHT) * scale;
+            float nw = r * sin(v * 2.0f * PI / SCREEN_HEIGHT) * scale;
+            float dx = fractal_noise4d(nx - 100.0f, ny + 100.0f, nz + 100.0f, nw + 100.0f, 6, 0.5f);
+            float dy = fractal_noise4d(nx + 100.0f, ny - 100.0f, nz + 100.0f, nw + 100.0f, 6, 0.5f);
+            float dz = fractal_noise4d(nx + 100.0f, ny + 100.0f, nz - 100.0f, nw + 100.0f, 6, 0.5f);
+            float dw = fractal_noise4d(nx + 100.0f, ny + 100.0f, nz + 100.0f, nw - 100.0f, 6, 0.5f);
+            float warped_noise = fractal_noise4d(nx + dx, ny + dy, nz + dz, nw + dw, 6, 0.5f);
+            warped_noise = powf(warped_noise, 1.5f);  // boost height contrast
+            if (warped_noise < min) min = warped_noise;
+            if (warped_noise > max) max = warped_noise;
+            heightmap[v][u] = warped_noise;
+            image[v][u] = (unsigned char)(warped_noise * 255.0f);
+        }
+    }
+    printf("Heightmap min: %f, max: %f\n", min, max);
+
+    FILE *f = fopen("heightmap_T.pgm", "wb");
+    if (!f) {
+        perror("Cannot write image");
+        exit(1);
+    }
+
+    fprintf(f, "P5\n%d %d\n255\n", SCREEN_WIDTH, SCREEN_HEIGHT);  // P5 = binary greyscale
+    fwrite(image, 1, SCREEN_WIDTH * SCREEN_HEIGHT, f);
+    fclose(f);
+
+    printf("Heightmap written to heightmap_T.pgm\n");
+
+    float upper_bound = 100.0f;
+    float lower_bound = 0.0f;
+    float gradient = (upper_bound - lower_bound) / (max - min);
+    printf("Gradient: %f\n", gradient);
+
+
+    // 1. Allocate vertex and normal grids
+    Vector3 **vertexGrid = MemAlloc(rings * sizeof(Vector3 *));
+    Vector3 **normalGrid = MemAlloc(rings * sizeof(Vector3 *));
+    for (int i = 0; i < rings; i++) {
+        vertexGrid[i] = MemAlloc(sides * sizeof(Vector3));
+        normalGrid[i] = MemAlloc(sides * sizeof(Vector3));
+        for (int j = 0; j < sides; j++) {
+            normalGrid[i][j] = (Vector3){0.0f, 0.0f, 0.0f};
+        }
+    }
+
+    // 2. Fill vertexGrid with positions (and optionally sample height)
+    for (int i = 0; i < rings; i++) {
+        float theta = (float)i / rings * 2.0f * PI;
+        float cosTheta = cosf(theta);
+        float sinTheta = sinf(theta);
+        for (int j = 0; j < sides; j++) {
+            float phi = ((float)j / sides) * 2.0f * PI;
+            float cosPhi = cosf(phi);
+            float sinPhi = sinf(phi);
+
+            float x = (R + r * cosPhi) * cosTheta;
+            float y = r * sinPhi;
+            float z = (R + r * cosPhi) * sinTheta;
+
+            float nx = cosPhi * cosTheta;
+            float ny = sinPhi;
+            float nz = cosPhi * sinTheta;
+
+            Vector3 position = (Vector3){ x, y, z };
+            Vector3 normal = (Vector3){ nx, ny, nz };
+
+            int sx = WRAP_MOD((int)z, SCREEN_WIDTH);
+            int sy = WRAP_MOD((int)(SCREEN_HEIGHT - x), SCREEN_HEIGHT);
+
+            float height = heightmap[sy][sx];
+            float adjusted_height = lower_bound + (height - min) * gradient;
+            
+            vertexGrid[i][j] = Vector3Add(position,Vector3Scale(normal, adjusted_height)); 
+        }
+    }
+
+
+    for (int i = 0; i < rings; i++) {
+        int i1 = (i + 1) % rings;
+        for (int j = 0; j < sides; j++) {
+            int j1 = (j + 1) % sides;
+
+            Vector3 p00 = vertexGrid[i][j];
+            Vector3 p01 = vertexGrid[i][j1];
+            Vector3 p10 = vertexGrid[i1][j];
+            Vector3 p11 = vertexGrid[i1][j1];
+
+            // Triangle 1: p00, p01, p10
+            Vector3 edge1 = Vector3Subtract(p01, p00);
+            Vector3 edge2 = Vector3Subtract(p10, p00);
+            Vector3 n1 = Vector3Normalize(Vector3CrossProduct(edge1, edge2));
+
+            normalGrid[i][j] = Vector3Add(normalGrid[i][j], n1);
+            normalGrid[i][j1] = Vector3Add(normalGrid[i][j1], n1);
+            normalGrid[i1][j] = Vector3Add(normalGrid[i1][j], n1);
+
+            // Triangle 2: p10, p01, p11
+            Vector3 edge3 = Vector3Subtract(p01, p10);
+            Vector3 edge4 = Vector3Subtract(p11, p10);
+            Vector3 n2 = Vector3Normalize(Vector3CrossProduct(edge3, edge4));
+
+            normalGrid[i1][j] = Vector3Add(normalGrid[i1][j], n2);
+            normalGrid[i][j1] = Vector3Add(normalGrid[i][j1], n2);
+            normalGrid[i1][j1] = Vector3Add(normalGrid[i1][j1], n2);
+        }
+    }
+
+    // 3. Generate indices (each quad = 2 triangles = 6 indices)
+    int indexCount = rings * sides * 6;
+    unsigned short *indices = MemAlloc(indexCount * sizeof(unsigned short)); // Use uint16 for Raylib
+    int k = 0;
+    for (int i = 0; i < rings; i++) {
+        int i1 = (i + 1) % rings;
+        for (int j = 0; j < sides; j++) {
+            int j1 = (j + 1) % sides;
+
+            int v00 = i * sides + j;
+            int v01 = i * sides + j1;
+            int v10 = i1 * sides + j;
+            int v11 = i1 * sides + j1;
+
+            // Triangle 1
+            indices[k++] = v00;
+            indices[k++] = v01;
+            indices[k++] = v10;
+
+            // Triangle 2
+            indices[k++] = v10;
+            indices[k++] = v01;
+            indices[k++] = v11;
+        }
+    }
+
+    int vertexCount = rings * sides;
+    Vector3 *flatVertices = MemAlloc(vertexCount * sizeof(Vector3));
+    Vector3 *flatNormals = MemAlloc(vertexCount * sizeof(Vector3));
+    Vector2 *texcoords = MemAlloc(vertexCount * sizeof(Vector2));
+
+    for (int i = 0; i < rings; i++) {
+        for (int j = 0; j < sides; j++) {
+            int idx = i * sides + j;
+            flatVertices[idx] = vertexGrid[i][j];
+            flatNormals[idx] = Vector3Normalize(normalGrid[i][j]);
+            texcoords[idx] = (Vector2){ (float)j / sides, (float)i / rings };
+        }
+    }
+
+    for (int i = 0; i < SCREEN_HEIGHT; i++) {
+        free(heightmap[i]);
+    }
+    free(heightmap);
+
+    Mesh mesh = { 0 };
+    mesh.vertexCount = vertexCount;
+    mesh.triangleCount = indexCount / 3;
+    mesh.vertices = (float *)flatVertices;
+    mesh.normals = (float *)flatNormals;
+    mesh.texcoords = (float *)texcoords;
+    mesh.indices = (unsigned short *)indices;
+
+    UploadMesh(&mesh, false);
+    return mesh;
+}
+
+
 
 Mesh MyGenFlatTorusMeshBAK(int rings, int sides) {
     float **heightmap = malloc(SCREEN_HEIGHT * sizeof(float *));
