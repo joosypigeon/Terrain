@@ -104,10 +104,18 @@ Mesh MyGenTorusMesh(int rings, int sides) {
         heightmap[i] = malloc(SCREEN_WIDTH * sizeof(float));
     }
 
-    //unsigned char image[SCREEN_HEIGHT][SCREEN_WIDTH];
     unsigned char **image = malloc(SCREEN_HEIGHT * sizeof(unsigned char *));
-    for (int i = 0; i < SCREEN_HEIGHT; i++) {
-        image[i] = malloc(SCREEN_WIDTH * sizeof(unsigned char));
+    if (!image) {
+        perror("malloc failed");
+        exit(1);
+    }
+
+    for (int y = 0; y < SCREEN_HEIGHT; y++) {
+        image[y] = malloc(SCREEN_WIDTH * sizeof(unsigned char));
+        if (!image[y]) {
+            perror("malloc failed");
+            exit(1);
+        }
     }
 
     perlin_init(42);  // consistent seed
@@ -116,6 +124,7 @@ Mesh MyGenTorusMesh(int rings, int sides) {
 
     float min = FLT_MIN;
     float max = -FLT_MAX;
+    #pragma omp parallel for schedule(static)
     for (int v = 0; v < SCREEN_HEIGHT; v++) {
         for (int u = 0; u < SCREEN_WIDTH; u++) {
             float nx = R * cos(u * 2.0f * PI / SCREEN_WIDTH) * scale;
@@ -128,6 +137,7 @@ Mesh MyGenTorusMesh(int rings, int sides) {
             float dw = fractal_noise4d(nx + 100.0f, ny + 100.0f, nz + 100.0f, nw - 100.0f, 6, 0.5f);
             float warped_noise = fractal_noise4d(nx + dx, ny + dy, nz + dz, nw + dw, 6, 0.5f);
             warped_noise = powf(warped_noise, 1.5f);  // boost height contrast
+            assert(warped_noise >= 0.0f && warped_noise <= 1.0f); // Ensure noise is in [0, 1]
             if (warped_noise < min) min = warped_noise;
             if (warped_noise > max) max = warped_noise;
             heightmap[v][u] = warped_noise;
@@ -143,17 +153,22 @@ Mesh MyGenTorusMesh(int rings, int sides) {
     }
 
     fprintf(f, "P5\n%d %d\n255\n", SCREEN_WIDTH, SCREEN_HEIGHT);  // P5 = binary greyscale
-    fwrite(image, 1, SCREEN_WIDTH * SCREEN_HEIGHT, f);
+    for (int y = 0; y < SCREEN_HEIGHT; y++) {
+        if (fwrite(image[y], sizeof(unsigned char), SCREEN_WIDTH, f) != SCREEN_WIDTH) {
+            perror("Error writing image data");
+            fclose(f);
+            exit(1);
+        }
+    }
     fclose(f);
 
     printf("Heightmap written to heightmap_T.pgm\n");
 
     // Free the image memory
-    for (int i = 0; i < SCREEN_HEIGHT; i++) {
-        free(image[i]);
+    for (int y = 0; y < SCREEN_HEIGHT; y++) {
+        free(image[y]);
     }
     free(image);
-
 
     float upper_bound = 100.0f;
     float lower_bound = 0.0f;
@@ -307,6 +322,7 @@ Mesh MyGenFlatTorusMeshBAK(int rings, int sides) {
 
     float min = FLT_MIN;
     float max = -FLT_MAX;
+    #pragma omp parallel for schedule(static)
     for (int v = 0; v < SCREEN_HEIGHT; v++) {
         for (int u = 0; u < SCREEN_WIDTH; u++) {
             Vector3 position = get_torus_position(u, v);
@@ -468,10 +484,18 @@ Mesh MyGenFlatTorusMesh(int rings, int sides) {
         heightmap[i] = malloc(SCREEN_WIDTH * sizeof(float));
     }
 
-    //unsigned char image[SCREEN_HEIGHT][SCREEN_WIDTH];
     unsigned char **image = malloc(SCREEN_HEIGHT * sizeof(unsigned char *));
-    for (int i = 0; i < SCREEN_HEIGHT; i++) {
-        image[i] = malloc(SCREEN_WIDTH * sizeof(unsigned char));
+    if (!image) {
+        perror("malloc failed");
+        exit(1);
+    }
+
+    for (int y = 0; y < SCREEN_HEIGHT; y++) {
+        image[y] = malloc(SCREEN_WIDTH * sizeof(unsigned char));
+        if (!image[y]) {
+            perror("malloc failed");
+            exit(1);
+        }
     }
 
     perlin_init(42);  // consistent seed
@@ -507,14 +531,19 @@ Mesh MyGenFlatTorusMesh(int rings, int sides) {
     }
 
     fprintf(f, "P5\n%d %d\n255\n", SCREEN_WIDTH, SCREEN_HEIGHT);  // P5 = binary greyscale
-    fwrite(image, 1, SCREEN_WIDTH * SCREEN_HEIGHT, f);
+    for (int y = 0; y < SCREEN_HEIGHT; y++) {
+        if (fwrite(image[y], sizeof(unsigned char), SCREEN_WIDTH, f) != SCREEN_WIDTH) {
+            perror("Error writing image data");
+            fclose(f);
+            exit(1);
+        }
+    }
     fclose(f);
 
     printf("Heightmap written to heightmap.pgm\n");
 
-    // Free the image memory
-    for (int i = 0; i < SCREEN_HEIGHT; i++) {
-        free(image[i]);
+    for (int y = 0; y < SCREEN_HEIGHT; y++) {
+        free(image[y]);
     }
     free(image);
 
