@@ -3,8 +3,8 @@
 
 void UpdateCameraManual(Camera3D *camera)
 {
-    static float cameraYaw = 0.0f;
-    static float cameraPitch = PI / 2.0f;  // Looking straight down at the origin
+    static float cameraYaw = PI / 4.0f;
+    static float cameraPitch = PI / 4.0f;
     static float cameraDistance = 1000.0f;
     static Vector3 target = { 0.0f, 0.0f, 0.0f };
 

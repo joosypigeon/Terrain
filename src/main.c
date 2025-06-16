@@ -72,10 +72,7 @@ size_t frameCounter = 0;
 
     // Load basic lighting shader
     Shader shader = LoadShader("src/lighting.vs","src/lighting.fs");
-    //shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
     shader.locs[SHADER_LOC_MATRIX_MVP] = GetShaderLocation(shader, "mvp");
-    // NOTE: "matModel" location name is automatically assigned on shader loading, 
-    // no need to get the location again if using that uniform name
     
     // Ambient light level (some basic lighting)
     int ambientLoc = GetShaderLocation(shader, "ambient");
@@ -129,14 +126,14 @@ size_t frameCounter = 0;
             ClearBackground(RAYWHITE);
 
             BeginMode3D(camera);
-/*
+
                 rlSetMatrixProjection(MatrixPerspective(
                     DEG2RAD * camera.fovy,
                     (float)SCREEN_WIDTH / SCREEN_HEIGHT,
                     10.0f,     // near clip
                     10000.0f   // far clip
                 ));
-                */
+                
                 BeginShaderMode(shader);
                 // --- Draw torus_model ---
                 Matrix torusModelMatrix = MatrixIdentity();  // no transform
