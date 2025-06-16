@@ -72,7 +72,8 @@ size_t frameCounter = 0;
 
     // Load basic lighting shader
     Shader shader = LoadShader("src/lighting.vs","src/lighting.fs");
-    shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
+    //shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
+    shader.locs[SHADER_LOC_MATRIX_MVP] = GetShaderLocation(shader, "mvp");
     // NOTE: "matModel" location name is automatically assigned on shader loading, 
     // no need to get the location again if using that uniform name
     
@@ -111,9 +112,9 @@ size_t frameCounter = 0;
         // Update camera
         UpdateCameraManual(&camera);
 
-        // Update the shader with the camera view vector (points towards { 0.0f, 0.0f, 0.0f })
-        float cameraPos[3] = { camera.position.x, camera.position.y, camera.position.z };
-        SetShaderValue(shader, shader.locs[SHADER_LOC_VECTOR_VIEW], cameraPos, SHADER_UNIFORM_VEC3);
+        // Projection matrix (pass aspect ratio)
+        float aspect = (float)GetScreenWidth() / (float)GetScreenHeight();
+
 
         // Check key inputs to enable/disable lights
         if (IsKeyPressed(KEY_Y)) { lights[0].enabled = !lights[0].enabled; }
@@ -128,28 +129,45 @@ size_t frameCounter = 0;
             ClearBackground(RAYWHITE);
 
             BeginMode3D(camera);
-
+/*
                 rlSetMatrixProjection(MatrixPerspective(
                     DEG2RAD * camera.fovy,
                     (float)SCREEN_WIDTH / SCREEN_HEIGHT,
                     10.0f,     // near clip
                     10000.0f   // far clip
                 ));
-                
+                */
                 BeginShaderMode(shader);
-                    DrawModel(torus_model, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, WHITE);
-                    //DrawModel(terrain, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, WHITE);
-                    DrawModelEx(terrain,
-                        translation,               // Translation
-                        (Vector3){ 0, 1, 0 },      // Rotation axis (no effect if angle is 0)
-                        0.0f,                      // No rotation
-                        (Vector3){ 1, 1, 1 },      // Uniform scale (no scaling)
-                        WHITE);                    // Tint color
+                // --- Draw torus_model ---
+                Matrix torusModelMatrix = MatrixIdentity();  // no transform
+                Matrix view = GetCameraMatrix(camera);
+                Matrix projection = MatrixPerspective(camera.fovy * DEG2RAD, aspect, 10.0f, 10000.0f);
+                Matrix torusMVP = MatrixMultiply(projection, MatrixMultiply(view, torusModelMatrix));
+                Matrix torusNormalMatrix = MatrixTranspose(MatrixInvert(torusModelMatrix));
+
+                SetShaderValueMatrix(shader, shader.locs[SHADER_LOC_MATRIX_MVP], torusMVP);
+                SetShaderValueMatrix(shader, GetShaderLocation(shader, "matModel"), torusModelMatrix);
+                SetShaderValueMatrix(shader, GetShaderLocation(shader, "matNormal"), torusNormalMatrix);
+
+                DrawModel(torus_model, Vector3Zero(), 1.0f, WHITE);
+
+                // --- Draw terrain model ---
+                Matrix terrainModelMatrix = MatrixTranslateVector(translation);
+                Matrix terrainMVP = MatrixMultiply(projection, MatrixMultiply(view, terrainModelMatrix));
+                Matrix terrainNormalMatrix = MatrixTranspose(MatrixInvert(terrainModelMatrix));
+
+                SetShaderValueMatrix(shader, shader.locs[SHADER_LOC_MATRIX_MVP], terrainMVP);
+                SetShaderValueMatrix(shader, GetShaderLocation(shader, "matModel"), terrainModelMatrix);
+                SetShaderValueMatrix(shader, GetShaderLocation(shader, "matNormal"), terrainNormalMatrix);
+
+                DrawModelEx(terrain, translation, (Vector3){0, 1, 0}, 0.0f, (Vector3){1, 1, 1}, WHITE);
+
+
+
 
                     if(showWireframe)
                     {
                         DrawModelWires(torus_model, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, DARKGRAY);
-                        //DrawModelWires(terrain, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, DARKGRAY);
                         rlPushMatrix();
                             Matrix transform = MatrixTranslateVector(translation);
                             rlMultMatrixf(MatrixToFloat(transform));
