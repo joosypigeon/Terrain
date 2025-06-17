@@ -38,6 +38,16 @@ Matrix MatrixTranslateVector(Vector3 v) {
     return MatrixTranslate(v.x, v.y, v.z);
 }
 
+void PrintMatrix(Matrix m) {
+    printf("[ %6.2f %6.2f %6.2f %6.2f ]\n", m.m0,  m.m4,  m.m8,  m.m12);
+    printf("[ %6.2f %6.2f %6.2f %6.2f ]\n", m.m1,  m.m5,  m.m9,  m.m13);
+    printf("[ %6.2f %6.2f %6.2f %6.2f ]\n", m.m2,  m.m6,  m.m10, m.m14);
+    printf("[ %6.2f %6.2f %6.2f %6.2f ]\n", m.m3,  m.m7,  m.m11, m.m15);
+}
+
+
+static bool printed = false;
+
 int main(void)
 {
     bool showWireframe = false;
@@ -73,6 +83,11 @@ size_t frameCounter = 0;
     // Load basic lighting shader
     Shader shader = LoadShader("src/lighting.vs","src/lighting.fs");
     shader.locs[SHADER_LOC_MATRIX_MVP] = GetShaderLocation(shader, "mvp");
+    shader.locs[SHADER_LOC_MATRIX_MODEL] = GetShaderLocation(shader, "matModel");
+    shader.locs[SHADER_LOC_MATRIX_NORMAL] = GetShaderLocation(shader, "matNormal");
+    printf("shader.locs[SHADER_LOC_MATRIX_MVP]: %d\n", shader.locs[SHADER_LOC_MATRIX_MVP]);
+    printf("shader.locs[SHADER_LOC_MATRIX_MODEL]: %d\n", shader.locs[SHADER_LOC_MATRIX_MODEL]);
+    printf("shader.locs[SHADER_LOC_MATRIX_NORMAL]: %d\n", shader.locs[SHADER_LOC_MATRIX_NORMAL]);
     
     // Ambient light level (some basic lighting)
     int ambientLoc = GetShaderLocation(shader, "ambient");
@@ -135,32 +150,49 @@ size_t frameCounter = 0;
                 ));
                 
                 BeginShaderMode(shader);
-                // --- Draw torus_model ---
-                Matrix torusModelMatrix = MatrixIdentity();  // no transform
-                Matrix view = GetCameraMatrix(camera);
-                Matrix projection = MatrixPerspective(camera.fovy * DEG2RAD, aspect, 10.0f, 10000.0f);
-                Matrix torusMVP = MatrixMultiply(projection, MatrixMultiply(view, torusModelMatrix));
-                Matrix torusNormalMatrix = MatrixTranspose(MatrixInvert(torusModelMatrix));
+                    // --- Draw torus_model ---
+                    Matrix torusModelMatrix = MatrixIdentity();  // no transform
+                    Matrix view = GetCameraMatrix(camera);
+                    Matrix projection = MatrixPerspective(camera.fovy * DEG2RAD, aspect, 10.0f, 10000.0f);
+                    Matrix torusMVP = MatrixMultiply(projection, MatrixMultiply(view, torusModelMatrix));
+                    Matrix torusNormalMatrix = MatrixTranspose(MatrixInvert(torusModelMatrix));
 
-                SetShaderValueMatrix(shader, shader.locs[SHADER_LOC_MATRIX_MVP], torusMVP);
-                SetShaderValueMatrix(shader, GetShaderLocation(shader, "matModel"), torusModelMatrix);
-                SetShaderValueMatrix(shader, GetShaderLocation(shader, "matNormal"), torusNormalMatrix);
+                    SetShaderValueMatrix(shader, shader.locs[SHADER_LOC_MATRIX_MVP], torusMVP);
+                    SetShaderValueMatrix(shader, shader.locs[SHADER_LOC_MATRIX_MODEL], torusModelMatrix);
+                    SetShaderValueMatrix(shader, shader.locs[SHADER_LOC_MATRIX_NORMAL], torusNormalMatrix);
 
-                DrawModel(torus_model, Vector3Zero(), 1.0f, WHITE);
+                    DrawModel(torus_model, Vector3Zero(), 1.0f, WHITE);
 
-                // --- Draw terrain model ---
-                Matrix terrainModelMatrix = MatrixTranslateVector(translation);
-                Matrix terrainMVP = MatrixMultiply(projection, MatrixMultiply(view, terrainModelMatrix));
-                Matrix terrainNormalMatrix = MatrixTranspose(MatrixInvert(terrainModelMatrix));
-
-                SetShaderValueMatrix(shader, shader.locs[SHADER_LOC_MATRIX_MVP], terrainMVP);
-                SetShaderValueMatrix(shader, GetShaderLocation(shader, "matModel"), terrainModelMatrix);
-                SetShaderValueMatrix(shader, GetShaderLocation(shader, "matNormal"), terrainNormalMatrix);
-
-                DrawModelEx(terrain, translation, (Vector3){0, 1, 0}, 0.0f, (Vector3){1, 1, 1}, WHITE);
+                    // --- Draw terrain model ---
+                    Matrix terrainModelMatrix = MatrixTranslateVector(translation);  
+                    Matrix terrainMVP = MatrixMultiply(projection, MatrixMultiply(view, terrainModelMatrix));
+                    Matrix terrainNormalMatrix = MatrixTranspose(MatrixInvert(terrainModelMatrix));
 
 
+                    if(!printed)
+                    {
+                        printf("torusMVP:\n");
+                        PrintMatrix(torusMVP);
+                        printf("torusModelMatrix:\n");
+                        PrintMatrix(torusModelMatrix);
+                        printf("torusNormalMatrix:\n");
+                        PrintMatrix(torusNormalMatrix);
+                        printf("terrainMVP:\n");
+                        PrintMatrix(terrainMVP);
+                        printf("terrainModelMatrix:\n");
+                        PrintMatrix(terrainModelMatrix);
+                        printf("terrainNormalMatrix:\n");
+                        PrintMatrix(terrainNormalMatrix);
+                        printed = true;
+                    }
+                    // Set shader values for terrain
+                    // Note: We use the same shader for both models, so we can reuse the locations
+                    SetShaderValueMatrix(shader, shader.locs[SHADER_LOC_MATRIX_MVP], terrainMVP);
+                    SetShaderValueMatrix(shader, shader.locs[SHADER_LOC_MATRIX_MODEL], terrainModelMatrix);
+                    SetShaderValueMatrix(shader, shader.locs[SHADER_LOC_MATRIX_NORMAL], terrainNormalMatrix);
 
+                    DrawModel(terrain, Vector3Zero(), 1.0f, WHITE);
+                    //DrawModelEx(terrain, translation, (Vector3){0, 1, 0}, 0.0f, (Vector3){1, 1, 1}, WHITE);
 
                     if(showWireframe)
                     {

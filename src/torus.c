@@ -198,7 +198,7 @@ Mesh MyGenTorusMesh(int rings, int sides) {
     }
     free(image);
 
-    float upper_bound = 100.0f;
+    float upper_bound = 400.0f;
     float lower_bound = 0.0f;
     float gradient = (upper_bound - lower_bound) / (max - min);
     printf("Gradient: %f\n", gradient);
@@ -373,7 +373,7 @@ Mesh MyGenFlatTorusMesh(int rings, int sides) {
     }
     printf("Heightmap min: %f, max: %f\n", min, max);
 
-    FILE *f = fopen("heightmap_T.pgm", "wb");
+    FILE *f = fopen("heightmap.pgm", "wb");
     if (!f) {
         perror("Cannot write image");
         exit(1);
