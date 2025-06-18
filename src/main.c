@@ -51,7 +51,7 @@ static bool printed = false;
 int main(void)
 {
     bool showWireframe = false;
-size_t frameCounter = 0;
+    size_t frameCounter = 0;
     size_t CELL_SIZE = 50;
     printf("Linked Raylib version: %s\n", RAYLIB_VERSION);
     const int glslVer = rlGetVersion();
@@ -113,7 +113,10 @@ size_t frameCounter = 0;
     GenMeshTangents(&terrain_mesh);
     Model terrain = LoadModelFromMesh(terrain_mesh);
     terrain.materials[0].shader = shader;
-    Vector3 translation = { 2.0f * R, 0.0f, 0.0f };  // Move model to this position
+
+
+    Vector3 translation1 = { 2.0f * R, 0.0f, 0.0f };  // Move model to this position
+    Vector3 translation2 = { 0.0, 1000.0f, 0.0f };
 
     //int number_of_frame = 0;
     while (!WindowShouldClose())
@@ -151,7 +154,7 @@ size_t frameCounter = 0;
                 
                 BeginShaderMode(shader);
                     // --- Draw torus_model ---
-                    Matrix torusModelMatrix = MatrixIdentity();  // no transform
+                    Matrix torusModelMatrix = MatrixTranslateVector(translation2); 
                     Matrix view = GetCameraMatrix(camera);
                     Matrix projection = MatrixPerspective(camera.fovy * DEG2RAD, aspect, 10.0f, 10000.0f);
                     Matrix torusMVP = MatrixMultiply(projection, MatrixMultiply(view, torusModelMatrix));
@@ -164,10 +167,18 @@ size_t frameCounter = 0;
                     DrawModel(torus_model, Vector3Zero(), 1.0f, WHITE);
 
                     // --- Draw terrain model ---
-                    Matrix terrainModelMatrix = MatrixTranslateVector(translation);  
+                    Matrix terrainModelMatrix = MatrixTranslateVector(translation1);  
                     Matrix terrainMVP = MatrixMultiply(projection, MatrixMultiply(view, terrainModelMatrix));
                     Matrix terrainNormalMatrix = MatrixTranspose(MatrixInvert(terrainModelMatrix));
 
+
+                    // Set shader values for terrain
+                    // Note: We use the same shader for both models, so we can reuse the locations
+                    SetShaderValueMatrix(shader, shader.locs[SHADER_LOC_MATRIX_MVP], terrainMVP);
+                    SetShaderValueMatrix(shader, shader.locs[SHADER_LOC_MATRIX_MODEL], terrainModelMatrix);
+                    SetShaderValueMatrix(shader, shader.locs[SHADER_LOC_MATRIX_NORMAL], terrainNormalMatrix);
+
+                    DrawModel(terrain, Vector3Zero(), 1.0f, WHITE);
 
                     if(!printed)
                     {
@@ -185,20 +196,12 @@ size_t frameCounter = 0;
                         PrintMatrix(terrainNormalMatrix);
                         printed = true;
                     }
-                    // Set shader values for terrain
-                    // Note: We use the same shader for both models, so we can reuse the locations
-                    SetShaderValueMatrix(shader, shader.locs[SHADER_LOC_MATRIX_MVP], terrainMVP);
-                    SetShaderValueMatrix(shader, shader.locs[SHADER_LOC_MATRIX_MODEL], terrainModelMatrix);
-                    SetShaderValueMatrix(shader, shader.locs[SHADER_LOC_MATRIX_NORMAL], terrainNormalMatrix);
-
-                    DrawModel(terrain, Vector3Zero(), 1.0f, WHITE);
-                    //DrawModelEx(terrain, translation, (Vector3){0, 1, 0}, 0.0f, (Vector3){1, 1, 1}, WHITE);
 
                     if(showWireframe)
                     {
                         DrawModelWires(torus_model, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, DARKGRAY);
                         rlPushMatrix();
-                            Matrix transform = MatrixTranslateVector(translation);
+                            Matrix transform = MatrixTranslateVector(translation1);
                             rlMultMatrixf(MatrixToFloat(transform));
                             rlEnableWireMode();
                             DrawModel(terrain, (Vector3){0, 0, 0}, 1.0f, DARKGRAY);  // Draw at origin because transform is handled manually

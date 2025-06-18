@@ -1,15 +1,9 @@
 #!/bin/bash
 
-# Directory to search
 DIR="."
 
-# Find and sort all .c and .h files in the directory
-FILES=$(find "$DIR" -maxdepth 1 -type f \( -name "*.c" -o -name "*.h" -name "*.v" -name "*.f" \) | sort)
-
-# Loop through each file
-for FILE in $FILES; do
+find "$DIR" -maxdepth 1 -type f \( -name "*.c" -o -name "*.h" -o -name "*.vs" -o -name "*.fs" \) | sort | while IFS= read -r FILE; do
     echo "===== $FILE ====="
     cat "$FILE"
     echo
 done
-
