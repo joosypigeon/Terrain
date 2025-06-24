@@ -64,22 +64,6 @@ float perlin_noise2d(float x, float y)
     return lerp(v, x1, x2);
 }
 
-float fractal_noise2d(float x, float y, int octaves, float persistence) {
-    float total = 0.0f;
-    float frequency = 1.0f;
-    float amplitude = 1.0f;
-    float maxValue = 0.0f;
-
-    for (int i = 0; i < octaves; i++) {
-        total += perlin_noise2d(x * frequency, y * frequency) * amplitude;
-        maxValue += amplitude;
-        amplitude *= persistence;
-        frequency *= 2.0f;
-    }
-
-    return (total / maxValue + 1.0f) / 2.0f;  // Normalise to [0, 1]
-}
-
 float grad3D(int hash, float x, float y, float z) {
     int h = hash & 15;      // 16 possible values (0–15)
     float u = h < 8 ? x : y;
@@ -124,23 +108,6 @@ float perlin_noise3d(float x, float y, float z)
     float y2 = lerp(v, x3, x4);
 
     return lerp(w, y1, y2);  // returns in [-1, 1]
-}
-
-
-float fractal_noise3d(float x, float y, float z, int octaves, float persistence) {
-    float total = 0.0f;
-    float frequency = 1.0f;
-    float amplitude = 1.0f;
-    float maxValue = 0.0f;
-
-    for (int i = 0; i < octaves; i++) {
-        total += perlin_noise3d(x * frequency, y * frequency, z * frequency) * amplitude;
-        maxValue += amplitude;
-        amplitude *= persistence;
-        frequency *= 2.0f;
-    }
-
-    return (total / maxValue + 1.0f) / 2.0f;  // Normalise to [0, 1]
 }
 
 float grad4D(int hash, float x, float y, float z, float w) {
@@ -217,20 +184,4 @@ float perlin_noise4d(float x, float y, float z, float w)
 
     // Interpolate along w and return final result
     return lerp(s, z0, z1);  // Result in [-1, 1]
-}
-
-float fractal_noise4d(float x, float y, float z, float w, int octaves, float persistence) {
-    float total = 0.0f;
-    float frequency = 1.0f;
-    float amplitude = 1.0f;
-    float maxValue = 0.0f;
-
-    for (int i = 0; i < octaves; i++) {
-        total += perlin_noise4d(x * frequency, y * frequency, z * frequency, w * frequency) * amplitude;
-        maxValue += amplitude;
-        amplitude *= persistence;
-        frequency *= 2.0f;
-    }
-
-    return (total / maxValue + 1.0f) / 2.0f;  // Normalise to [0, 1]
 }

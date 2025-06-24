@@ -1,5 +1,5 @@
 #include "torus.h"
-#include "perlin_noise.h"
+#include "fbm_with_function_pointer.h"
 
 #include <stdlib.h>
 
@@ -128,19 +128,47 @@ float **get_heightmap(const char *filename) {
             float ny = R * sin(u * 2.0f * PI / SCREEN_WIDTH) * scale;
             float nz = r * cos(v * 2.0f * PI / SCREEN_HEIGHT) * scale;
             float nw = r * sin(v * 2.0f * PI / SCREEN_HEIGHT) * scale;
-            float dx = fractal_noise4d(nx - 100.0f, ny + 100.0f, nz + 100.0f, nw + 100.0f, 6, 0.5f);
-            float dy = fractal_noise4d(nx + 100.0f, ny - 100.0f, nz + 100.0f, nw + 100.0f, 6, 0.5f);
-            float dz = fractal_noise4d(nx + 100.0f, ny + 100.0f, nz - 100.0f, nw + 100.0f, 6, 0.5f);
-            float dw = fractal_noise4d(nx + 100.0f, ny + 100.0f, nz + 100.0f, nw - 100.0f, 6, 0.5f);
-            float warped_noise = fractal_noise4d(nx + dx, ny + dy, nz + dz, nw + dw, 6, 0.5f);
-            warped_noise = powf(warped_noise, 1.5f);  // boost height contrast
+
+            NoiseType noiseType = NOISE_PERLIN;  // Change this to switch noise types
+            NoiseFunction4D fn = NULL;
+            switch (noiseType) {
+                case NOISE_VALUE:
+                    fn = perlin_noise4d;  // Use Perlin noise
+                    break;
+                case NOISE_PERLIN:
+                    fn = perlin_noise4d;  // Use Perlin noise
+                    break;
+                case NOISE_SIMPLEX:
+                    fn = simplex4d;  // Use Simplex noise
+                    break;
+                default:
+                    fprintf(stderr, "Unknown noise type: %d\n", noiseType);
+                    exit(1);
+            }
+
+            const float disp_offset = 0.1f;
+            const float displacement_strength = 1.0f;
+
+            float dx = fbm4d_fn(nx + disp_offset, ny, nz, nw, 6, 2.0f, 0.5f, fn);
+            float dy = fbm4d_fn(nx, ny + disp_offset, nz, nw, 6, 2.0f, 0.5f, fn);
+            float dz = fbm4d_fn(nx, ny, nz + disp_offset, nw, 6, 2.0f, 0.5f, fn);
+            float dw = fbm4d_fn(nx, ny, nz, nw + disp_offset, 6, 2.0f, 0.5f, fn);
+
+            float warped_noise = fbm4d_fn(
+                nx + displacement_strength * dx,
+                ny + displacement_strength * dy,
+                nz + displacement_strength * dz,
+                nw + displacement_strength * dw,
+                6, 2.0f, 0.5f, fn
+            );
+
+            warped_noise = powf(warped_noise, 4.0f);  // boost height contrast
             assert(warped_noise >= 0.0f && warped_noise <= 1.0f); // Ensure noise is in [0, 1]
             heightmap[v][u] = warped_noise;
         }
     }
 
     return heightmap;
-
 }
 
 // Generates a torus mesh with the specified number of rings and sides.

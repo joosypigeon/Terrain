@@ -199,7 +199,7 @@ int main(void)
 
                     if(showWireframe)
                     {
-                        DrawModelWires(torus_model, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, DARKGRAY);
+                        /* 
                         rlPushMatrix();
                             Matrix transform = MatrixTranslateVector(translation1);
                             rlMultMatrixf(MatrixToFloat(transform));
@@ -207,6 +207,11 @@ int main(void)
                             DrawModel(terrain, (Vector3){0, 0, 0}, 1.0f, DARKGRAY);  // Draw at origin because transform is handled manually
                         rlDisableWireMode();
                         rlPopMatrix();
+                        */
+                        DrawModelWires(torus_model, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, DARKGRAY);
+                        DrawModelWires(terrain, (Vector3){ 0.0f, 0.0f, 0.0f }, 1.0f, DARKGRAY);
+
+
                     }
                 EndShaderMode();
 
